@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Fridge Poetry</title>
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            background: radial-gradient(circle at center, #0a3d62 30%, #000c40 100%);
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: inset 0 0 100px rgba(0, 0, 0, 0.5); /* Inner shadow for depth */
+        }
+        .word-container {
+            position: relative;
+            width: 80%;
+            height: 80%;
+            background-color: rgba(255, 255, 255, 0.1); /* Slight highlight for the curved effect */
+            border-radius: 15px; /* Soft rounded corners */
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5); /* Outer shadow for depth */
+            margin-right: 20px;
+        }
+        .word {
+            position: absolute;
+            padding: 5px;
+            background-color: #fff;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            user-select: none;
+            font-family: Arial, sans-serif; /* Improved font */
+            transition: transform 0.5s ease; /* Smooth transition for the transform property */
+
+        }
+        #logo {
+            font-family: 'Arial', sans-serif; /* You can choose a different font */
+            font-size: 48px; /* Adjust the size as needed */
+            text-align: center;
+            margin: 0px;
+            text-transform: uppercase;
+            letter-spacing: 20px;
+            background: linear-gradient(
+                to bottom, 
+                #ffffff 0%, /* Sky blue color */
+                #ffffff 10%, /* Sky blue color */
+                #87CEEB 50%, /* Midpoint of the gradient */
+                #000000 51%,
+                #ffffff 52%, /* Bronze color for desert */
+                #fDb56F 62%,
+                #CD853F 100%
+            );
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5); /* Soft shadow for depth */
+            page-break-after: always;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="logo">Fridge Poetry</div>
+    <div class="word-container" id="wordContainer">
+        {% for word in words %}
+            <div class="word">{{ word }}</div>
+        {% endfor %}
+        
+        
+    </div>
+
+    <script>
+        let currentX = 0;
+        let currentY = 0;
+        const wordSpacing = 10; // Spacing between words
+        const lineHeight = 30; // Height of a line of words
+        const containerPadding = 10; // Padding inside the word container
+        const wordContainerWidth = document.getElementById('wordContainer').clientWidth;
+        let placedWordsString = ""; // Initialize an empty string to keep track of placed words
+        
+        // Function to calculate the next position
+        function getNextPosition(wordWidth) {
+            if (currentX + wordWidth > wordContainerWidth - containerPadding) {
+                // Move to the next line if the word doesn't fit in the current line
+                currentX = 0;
+                currentY += lineHeight+10;
+            }
+            
+            let position = { x: currentX, y: currentY };
+            
+            // Update currentX for the next word
+            currentX += wordWidth + wordSpacing;
+            
+            return position;
+        }
+        
+        // Function to move the selected word to the next position
+        function moveWordToPosition(word) {
+            var wordElement = Array.from(document.getElementsByClassName('word')).find(w => w.innerText === word && !w.classList.contains('placed'));
+            
+            if (wordElement) {
+                let wordWidth = wordElement.offsetWidth;
+                let position = getNextPosition(wordWidth);
+                
+                wordElement.style.transform = `translate(${position.x}px, ${position.y}px) rotate(0deg)`; // Move to the calculated position
+                wordElement.classList.add('placed'); // Mark the word as placed
+                
+                placedWordsString += (placedWordsString ? " " : "") + word; // Append the word to the placed words string
+            }
+        }
+        
+        // Function to send words to the server and get the selected word
+        function constructSentence() {
+            var availableWords = Array.from(document.getElementsByClassName('word'))
+            .filter(w => !w.classList.contains('placed')) // Filter out already placed words
+            .map(w => w.innerText);
+            
+            fetch('/construct', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ availableWords: availableWords, placedWords: placedWordsString }),
+            })
+            .then(response => response.json())
+            .then(selectedWord => moveWordToPosition(selectedWord));
+        }
+
+        
+        // Initial placement of words
+        document.addEventListener("DOMContentLoaded", function() {
+            var container = document.getElementById('wordContainer');
+            var words = container.getElementsByClassName('word');
+            for (var i = 0; i < words.length; i++) {
+                var word = words[i];
+                var containerRect = container.getBoundingClientRect();
+                var x = Math.random() * (containerRect.width - word.clientWidth);
+                var y = 200 + Math.random() * (containerRect.height - word.clientHeight - 200);
+                var rotate = Math.random() * 360;
+                word.style.transform = 'translate(' + x + 'px, ' + y + 'px) rotate(' + rotate + 'deg)';
+            }
+            
+            // Example: Call constructSentence every 3 seconds
+            setInterval(constructSentence, 3000);
+        });
+
+    </script>
+</body>
+</html>
